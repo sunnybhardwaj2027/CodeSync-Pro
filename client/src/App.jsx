@@ -3,7 +3,7 @@ import Editor from '@monaco-editor/react';
 import io from 'socket.io-client';
 import axios from 'axios';
 
-const socket = io.connect("http://localhost:3001");
+const socket = io.connect("https://codesync-pro-tb71.onrender.com");
 
 function App() {
   const [code, setCode] = useState("");
@@ -32,7 +32,7 @@ function App() {
     setLoading(true);
     setOutput("Running...");
     try {
-      const { data } = await axios.post("http://localhost:3001/compile", { code, language, input });
+      const { data } = await axios.post("https://codesync-pro-tb71.onrender.com/compile", { code, language, input });
       setOutput(data.output);
     } catch (err) {
       setOutput("Error: Could not connect to backend.");
