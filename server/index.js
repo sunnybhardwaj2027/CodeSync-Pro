@@ -5,33 +5,56 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const axios = require('axios');
 
-// SSL bypass for university/college networks
+// SSL bypass for university networks (Optional for production)
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
+// Middleware
 app.use(cors());
 app.use(express.json());
 
 const server = http.createServer(app);
+
+// --- SOCKET.IO CONFIG (CORS FIX) ---
 const io = new Server(server, {
-    cors: { origin: "http://localhost:5173", methods: ["GET", "POST"] },
+    cors: { 
+        origin: "*", // Production ke liye "*" allow karna zaroori hai
+        methods: ["GET", "POST"] 
+    },
 });
 
 // --- SOCKET.IO LOGIC ---
 io.on("connection", (socket) => {
-    socket.on("join_room", (room) => socket.join(room));
-    socket.on("send_code", (data) => socket.to(data.room).emit("receive_code", data.code));
+    console.log(`User Connected: ${socket.id}`);
+
+    socket.on("join_room", (room) => {
+        socket.join(room);
+        console.log(`User ${socket.id} joined room: ${room}`);
+    });
+
+    socket.on("send_code", (data) => {
+        // Sirf us room ke baki logo ko bhejega
+        socket.to(data.room).emit("receive_code", data.code);
+    });
+
+    socket.on("disconnect", () => {
+        console.log("User Disconnected", socket.id);
+    });
 });
 
 // --- DYNAMIC COMPILER ROUTE (JDoodle) ---
 app.post("/compile", async (req, res) => {
     const { code, language, input } = req.body;
 
-    // JDoodle Language Mapping
     const langMap = {
         cpp: { lang: "cpp17", ver: "0" },
         python: { lang: "python3", ver: "4" },
         java: { lang: "java", ver: "4" }
     };
+
+    // Safety check for language
+    if (!langMap[language]) {
+        return res.status(400).json({ output: "Error: Unsupported Language" });
+    }
 
     const program = {
         script: code,
@@ -52,4 +75,11 @@ app.post("/compile", async (req, res) => {
     }
 });
 
-server.listen(3001, () => console.log("SERVER RUNNING ON 3001"));
+// Root route for Health Check (Render ke liye zaroori hai)
+app.get("/", (req, res) => {
+    res.send("CodeSync-Pro Server is Running...");
+});
+
+// --- DYNAMIC PORT (Render requirement) ---
+const PORT = process.env.PORT || 3001;
+server.listen(PORT, () => console.log(`SERVER RUNNING ON PORT ${PORT}`));
